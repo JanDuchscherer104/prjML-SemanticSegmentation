@@ -10,8 +10,8 @@
 - Integrate the model into an autonomous system (optional)
 - Video stream (optional)
 
-## Networks
-
+## Networks / Codebases
+- [Pointcept](https://github.com/Pointcept/Pointcept)
 
 ## Benchmarks / Datasets
 - [rgb-d](https://paperswithcode.com/datasets?mod=rgb-d)
@@ -19,6 +19,8 @@
 - [NYUv2](https://paperswithcode.com/dataset/nyuv2)
 - [ShapeNet](https://shapenet.org)
 
+## Papers
+- [SparseUNet+MSC](https://arxiv.org/pdf/2303.14191v1.pdf)
 
 ## Hardware
 - **Camera type**: [intel realsense depth camera d455](https://www.intelrealsense.com/wp-content/uploads/2020/06/Intel-RealSense-D400-Series-Datasheet-June-2020.pdf)
