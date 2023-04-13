@@ -21,6 +21,7 @@
 
 ## Papers
 - [SparseUNet+MSC](https://arxiv.org/pdf/2303.14191v1.pdf)
+- [4D Spatio-Temporal ConvNets](https://arxiv.org/abs/1904.08755)
 
 ## Hardware
 - **Camera type**: [intel realsense depth camera d455](https://www.intelrealsense.com/wp-content/uploads/2020/06/Intel-RealSense-D400-Series-Datasheet-June-2020.pdf)
