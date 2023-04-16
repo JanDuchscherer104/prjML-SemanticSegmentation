@@ -1,3 +1,0 @@
-[submodule "SphereFormer"]
-	path = SphereFormer
-	url = git@github.com:dvlab-research/SphereFormer.git

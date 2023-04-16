@@ -1,0 +1,5 @@
+# Ignore the 'toolbox_nyu_depth_v2' directory in any location
+/semanticsegmentation/utils/thrird_party/toolbox_nyu_depth_v2/**
+
+# Ignore any '.data' directory and its contents
+/.data/**
