@@ -18,10 +18,12 @@
 - [ScanNet](https://paperswithcode.com/dataset/scannet)
 - [NYUv2](https://paperswithcode.com/dataset/nyuv2)
 - [ShapeNet](https://shapenet.org)
+- [SUN RGB-D](https://rgbd.cs.princeton.edu)
 
 ## Papers
 - [SparseUNet+MSC](https://arxiv.org/pdf/2303.14191v1.pdf)
-- [4D Spatio-Temporal ConvNets](https://arxiv.org/abs/1904.08755)
+- [SpConvNW](https://openaccess.thecvf.com/content/CVPR2022/papers/Chen_Focal_Sparse_Convolutional_Networks_for_3D_Object_Detection_CVPR_2022_paper.pdf)
+- ([4D Spatio-Temporal ConvNets](https://arxiv.org/abs/1904.08755))
 
 ## Hardware
 - **Camera type**: [intel realsense depth camera d455](https://www.intelrealsense.com/wp-content/uploads/2020/06/Intel-RealSense-D400-Series-Datasheet-June-2020.pdf)

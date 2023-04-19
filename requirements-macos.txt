@@ -1,0 +1,25 @@
+opencv-python
+# tensorflow
+# tensorflow-gpu
+tensorflow-macos
+# keras
+
+torch
+torchvision
+
+scikit-image
+scikit-learn
+
+numpy
+matplotlib
+
+jupyter
+jupyterlab
+notebook
+ipywidgets
+ipykernel
+
+flake8
+black
+isort
+mypy
