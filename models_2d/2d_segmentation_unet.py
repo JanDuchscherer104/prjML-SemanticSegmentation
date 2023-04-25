@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torchvision
 from torchsummary import summary
 from torchvision.models import resnet50
 from torchvision.models.resnet import Bottleneck
@@ -24,26 +25,26 @@ from torchvision.models.resnet import Bottleneck
 
 
 class ResNet4Channel(nn.Module):
-    def __init__(self):
+    def __init__(self, out_features=1000):
         super(ResNet4Channel, self).__init__()
-        backbone = resnet50(weights=True)
+        backbone = resnet50(weights=torchvision.models.ResNet50_Weights)
         weights = backbone.conv1.weight.clone()
 
+        # h x w x 4
         self.conv1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        # backbone.conv1.weight[:, :3, :, :] = torch.nn.Parameter(weights)
-        # backbone.conv1.weight[:, 3, :, :] = torch.nn.Parameter(
-        #     weights[:, 1, :, :]
-        # )
         self.conv1.weight = nn.Parameter(
             torch.cat((weights, weights[:, 1:2, :, :]), dim=1)
         )
         self.bn1 = backbone.bn1
         self.relu = backbone.relu
         self.maxpool = backbone.maxpool
+        # h x 4
         self.layer1 = backbone.layer1
         self.layer2 = backbone.layer2
         self.layer3 = backbone.layer3
         self.layer4 = backbone.layer4
+        # self.avgpool = backbone.avgpool
+        # self.fc = nn.Linear(512 * 4, out_features)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -61,7 +62,7 @@ class ResNet4Channel(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, num_classes):
+    def® __init__(self, num_classes):
         super(UNet, self).__init__()
         self.resnet = ResNet4Channel()
         # add bottleneck layer
@@ -117,7 +118,8 @@ if __name__ == "__main__":
     model = ResNet4Channel()  # Assuming UNet and num_classes are defined
     input_size = (
         4,
-        224,
-        224,
+        128,
+        128,
     )  # Example input size: 4-channel RGB-D image with 224x224 resolution
     model.print_summary(input_size)
+    # model.print_shapes()

@@ -15,6 +15,10 @@ from torch.utils.data import Dataset
 class NYUDepthV2Dataset(Dataset):
     """
     Link to the dataset: https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html
+    TODO
+        - C x H x W
+        - batch_size
+
     """
 
     __data_dir = os.path.join(os.getcwd(), os.pardir, ".data")
@@ -38,10 +42,12 @@ class NYUDepthV2Dataset(Dataset):
         self.split = split
         self.transform = transform
         self.verbose = verbose
+        self.random_seed = random_seed
 
         # Load the .mat f
         with h5py.File(self.data_path, "r") as f:
             # HxWx3XN -> NxHxWx3
+            # HxWx3xN -> Nx3xHxW TODO
             self.rgb_images = np.transpose(f["images"][:100], (0, 3, 2, 1))
             self.depth_maps = np.transpose(f["depths"][:100], (0, 2, 1))
             self.labels = np.transpose(f["labels"][:100], (0, 2, 1))
@@ -49,7 +55,7 @@ class NYUDepthV2Dataset(Dataset):
             chr_arr = [list(f[ref][()].flatten()) for ref in f["names"][0]]
             self.class_names = ["".join(chr(c) for c in name) for name in chr_arr]
 
-        rnd.seed(random_seed)
+        rnd.seed(self.random_seed)
 
     def __len__(self):
         return len(self.rgb_images)
@@ -67,7 +73,8 @@ class NYUDepthV2Dataset(Dataset):
         return sample
 
     def __repr__(self) -> str:
-        repr = f"""NYUDepthV2Dataset(split={self.split}, data_path={self.data_path})
+        repr = f"""
+        NYUDepthV2Dataset(split={self.split}, data_path={self.data_path})
         Number of samples: {len(self)}
         Number of labels: {len(self.class_names)}
         RGB image shape: {self.rgb_images.shape}
@@ -117,7 +124,7 @@ class NYUDepthV2Dataset(Dataset):
         train_set, val_set = torch.utils.data.random_split(
             self,
             [num_samples_train, num_samples_val],
-            generator=torch.Generator().manual_seed(42),
+            generator=torch.Generator().manual_seed(self.ran),
         )
         return train_set, val_set
 
@@ -136,5 +143,8 @@ class NYUDepthV2Dataset(Dataset):
 
 
 if __name__ == "__main__":
-    dataset = NYUDepthV2Dataset()
+    dataset = NYUDepthV2Dataset(
+        data_path="/Volumes/Extreme SSD/nyu_depth_v2_labeled.mat"
+    )
+    dataset.visualize_rnd_sample()
     print(dataset)
