@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 class RGBDTransform:
     """
     https://pytorch.org/vision/stable/transforms.html
-    TODO crop, 
+    TODO crop,
     """
 
     def __init__(self, resize=Union[None, Tuple[int, int]], mean=None, std=None):
@@ -29,7 +29,8 @@ class RGBDTransform:
         self.label_transform = transforms.Compose(
             [
                 transforms.Resize(
-                    size=self.resize,
+                    # size=self.resize,
+                    size=(120, 160),
                     interpolation=transforms.InterpolationMode.NEAREST,
                 )
             ]

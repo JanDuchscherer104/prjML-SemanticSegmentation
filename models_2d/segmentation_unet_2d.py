@@ -73,8 +73,8 @@ class UpConv(nn.Module):
 
     def forward(self, x, x_cat):
         x = self.upconv(x)
-        print("x.shape:", x.shape)
-        print("x_cat.shape:", x_cat.shape)
+        # print("x.shape:", x.shape)
+        # print("x_cat.shape:", x_cat.shape)
         x = torch.cat([x, x_cat], dim=1)
         x = self.conv1(x)
         x = self.conv2(x)
@@ -90,7 +90,7 @@ class UNet(nn.Module):
         self.upconv3 = UpConv(2048, 1024)
         self.upconv2 = UpConv(1024, 512)
         self.upconv1 = UpConv(512, 256)
-        self.last_conv = nn.Conv2d(256, num_classes, kernel_size=1)
+        self.last_conv = nn.Conv2d(256, num_classes, kernel_size=1, stride=1)
 
     def _make_bottle_neck(self, in_channels, out_channels):
         return nn.Sequential(
@@ -100,21 +100,17 @@ class UNet(nn.Module):
 
     def forward(self, x):
         x1, x2, x3, x4 = self.resnet.forward(x)
-        print("x1.shape:", x1.shape)
-        print("x2.shape:", x2.shape)
-        print("x3.shape:", x3.shape)
-        print("x4.shape:", x4.shape)
+        # print("x1.shape:", x1.shape)
+        # print("x2.shape:", x2.shape)
+        # print("x3.shape:", x3.shape)
+        # print("x4.shape:", x4.shape)
         x = self.bottleneck(x4)
         x = self.upconv3.forward(x, x3)
         x = self.upconv2.forward(x, x2)
         x = self.upconv1.forward(x, x1)
         x = self.last_conv(x)
+        x.squeeze_(1)
         return x
-
-    def print_summary(self, input_size):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = self.to(device)
-        summary(model, input_size)
 
 
 if __name__ == "__main__":

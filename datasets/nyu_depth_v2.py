@@ -68,7 +68,7 @@ class NYUDepthV2Dataset(Dataset):
             )
             self.labels = torch.from_numpy(
                 np.transpose(
-                    f["labels"][: self.num_samples].astype(np.uint8), (0, 2, 1)
+                    f["labels"][: self.num_samples].astype(np.int64), (0, 2, 1)
                 )
             )
             chr_arr = [list(f[ref][()].flatten()) for ref in f["names"][0]]
@@ -104,6 +104,10 @@ class NYUDepthV2Dataset(Dataset):
 
         return sample
 
+    @property
+    def num_classes(self):
+        return len(self.class_names)
+
     def __repr__(self) -> str:
         repr = f"""
         NYUDepthV2Dataset(split={self.split}, data_path={self.data_path})
@@ -128,12 +132,7 @@ class NYUDepthV2Dataset(Dataset):
 
         rgb_image = rgb_image.numpy().astype(np.float32).transpose(1, 2, 0)
         depth_map.squeeze_(0)
-        # Define a discrete colormap
-        # unique_labels = np.unique(label)
-        # num_labels = len(unique_labels)
 
-        # color_map = color.label2rgb(label)
-        # labels = [self.label_id2name(color.rgb2label(color_map)) for color in np.unique(color_map)]
         uique_labels = np.unique(label.flatten().numpy())
         print(
             "Found the following labels:\n",
@@ -178,13 +177,6 @@ class NYUDepthV2Dataset(Dataset):
             generator=torch.Generator().manual_seed(self.random_seed),
         )
         return train_set, val_set
-
-    # def get_colors(self, num_colors):
-    #     cm = plt.get_cmap("gist_rainbow")
-    #     c_norm = mcolors.Normalize(vmin=0, vmax=num_colors - 1)
-    #     scalar_map = mplcm.ScalarMappable(norm=c_norm, cmap=cm)
-    #     colors = [scalar_map.to_rgba(i) for i in range(num_colors)]
-    #     return colors
 
     def label_name2id(self, label_name):
         return self.class_names.index(label_name)
