@@ -1,3 +1,24 @@
+## TODO
+- [ ] **!** [TorchLightning](https://lightning.ai/pages/open-source/)
+- [ ] move to Google Colab
+- [ ] **!** NYUv2 unlabeled dataset for pretraining
+- [ ] **!** fix model (one concat stage is missing??)
+- [ ] **!** data augmentation: Albumentations
+- [ ] optimize hyperparameters (wandb)
+- [ ] ResNet101
+- [ ] generative augmentation (Stable Diffusion)
+- [ ] **!** **DATA**!!!!!!
+        - Kaggle??
+- [ ] ScanNet dataset
+- [ ] PCA?
+- [ ] MSC?
+- [ ] pre NN clustering
+- [ ] ensemble layers? Combination (InceptionV3 + ResNet)
+- [ ] 3D CNN
+- [ ] DATA!!!!!!
+- [ ] 3D transformer
+
+---
 ## Milestones
 - **Semantic Segmentation** or Object Detection
 - Research on state-of-the-art point cloud models
@@ -9,7 +30,7 @@
 - Generate segmentation / bounding boxes for each point cloud frame
 - Integrate the model into an autonomous system (optional)
 - Video stream (optional)
-
+---
 ## Networks / Codebases
 - [Pointcept](https://github.com/Pointcept/Pointcept)
 
@@ -20,7 +41,8 @@
 - [ShapeNet](https://shapenet.org)
 - [SUN RGB-D](https://rgbd.cs.princeton.edu)
 
-## Papers
+## Papers & Resources
+- [PyToechLightning Tutorial](https://www.pytorchlightning.ai/tutorials)
 - [SparseUNet+MSC](https://arxiv.org/pdf/2303.14191v1.pdf)
 - [SpConvNW](https://openaccess.thecvf.com/content/CVPR2022/papers/Chen_Focal_Sparse_Convolutional_Networks_for_3D_Object_Detection_CVPR_2022_paper.pdf)
 - ([4D Spatio-Temporal ConvNets](https://arxiv.org/abs/1904.08755))
@@ -32,3 +54,5 @@
 ## Notes
 
 - __IoU__ := Intersection over Union, evaluates the overlap of the Ground Truth and Prediction region.
+
+---
