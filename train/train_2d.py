@@ -1,151 +1,212 @@
 import os
 import random
 import sys
+from dataclasses import dataclass
+from multiprocessing import cpu_count
+from typing import Tuple, Union
 
+import matplotlib.pyplot as plt
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from matplotlib import pyplot as plt
+import torchmetrics
+from pytorch_lightning import Trainer
 from skimage import color
-from torch.utils.data import DataLoader
-from tqdm import tqdm
 
 sys.path.append("../")
 from datasets.nyu_depth_v2 import NYUDepthV2Dataset
-from models_2d.segmentation_unet_2d import UNet
+from models_2d.segmentation_resunet_2d import ResUNet
 from utils.transform_2d import RGBDTransform
 
 
-class ResUNetTrainer:
-    MODEL_DIR = ".models_2d/"
+@dataclass
+class Hyperparameters:
+    resize_in: Union[bool, float] = 0.5
+    resize_out: Union[None, Tuple[int, int]] = None
+    num_epochs: int = 20
+    batch_size: int = 4
+    num_workers: int = cpu_count()
+    learning_rate: float = 0.001
 
-    def __init__(self, model_ident="resunet_50"):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model_path = os.path.join(
-            os.getcwd(), os.pardir, self.MODEL_DIR, f"{model_ident}.pth"
+    # Will be set during initialization
+    num_classes: int = 895
+    mask_shape = None
+    rgbd_shape = None
+    model_pred_shape = None
+
+
+@dataclass
+class Config:
+    data_path: str = os.path.join(os.pardir, ".data/nyu_depth_v2_labeled.mat")
+    model_path: str = os.path.join(os.pardir, ".models_2d")
+    model_ident: str = "resResUNet_50"
+    num_samples: int = 100  # -1 for all
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    random_seed: int = 42
+    verbose: bool = True
+    print_model: bool = False
+
+
+class LitResResUNet(pl.LightningModule):
+    def __init__(self):
+        super(LitResResUNet, self).__init__()
+
+        self.params = Hyperparameters()
+        self.config = Config()
+        self.verbose = self.config.verbose
+
+        self._init_dataset()
+
+        self.model = ResUNet(num_classes=self.params.num_classes)
+
+        self._set_pred_shape()
+        assert self.params.model_pred_shape[2:] == self.params.mask_shape[1:]
+
+        # Criterion, optimizer
+        # TODO Try mIoU-Loss
+        self.metric_iou = torchmetrics.JaccardIndex(
+            task="multiclass", num_classes=self.params.num_classes
         )
-        self.model = None
+        self.criterion = nn.CrossEntropyLoss()
 
-    def get_data_loaders(self, data_path, batch_size=8, num_samples=-1):
+        if self.verbose:
+            print(self)
+        if self.config.print_model:
+            self.model_summary()
+
+    def forward(self, x):
+        return self.model(x)
+
+    def training_step(self, batch, batch_idx):
+        rgbds, masks = batch
+        preds = self.model(rgbds)
+
+        loss = self.criterion(preds, masks)
+        iou = self.metric_iou(preds, masks)
+
+        self.log("train_loss", loss)
+        self.log("train_iou", iou)
+
+        return {"loss": loss}
+
+    # def setup(self, stage=None):  # TODO will be called to often?
+    def _init_dataset(self):
         dataset = NYUDepthV2Dataset(
-            data_path=data_path,
-            transform=RGBDTransform,
-            resize=False,
-            num_samples=num_samples,
+            data_path=self.config.data_path,
+            transform=RGBDTransform,  # mean, std and resize will be set in the dataset class
+            resize=self.params.resize_in,
+            random_seed=self.config.random_seed,
+            num_samples=self.config.num_samples,
         )
-        print(dataset)
-        self.num_classes = dataset.num_classes
-        train_set, val_set = dataset.split_dataset()
+        self.params.mask_shape = dataset.mask_shape
+        self.params.rgbd_shape = dataset.rgbd_shape
+        if self.verbose:
+            print(dataset)
+        self.params.num_classes = dataset.num_classes
+        self.train_set, self.val_set = dataset.split_dataset()
 
-        self.train_loader = DataLoader(
-            train_set, batch_size=batch_size, shuffle=True, num_workers=2
+    def train_dataloader(self):
+        train_loader = torch.utils.data.DataLoader(
+            dataset=self.train_set,
+            batch_size=self.params.batch_size,
+            num_workers=self.params.num_workers,
+            shuffle=True,
         )
-        self.val_loader = DataLoader(
-            val_set, batch_size=batch_size, shuffle=False, num_workers=2
+        return train_loader
+
+    def val_dataloader(self):
+        val_loader = torch.utils.data.DataLoader(
+            dataset=self.val_set,
+            batch_size=self.params.batch_size,
+            num_workers=self.params.num_workers,
+            shuffle=False,
         )
+        return val_loader
 
-    def train(self, batch_size=8, num_epochs=1, learning_rate=1e-4):
-        if self.model is None:
-            self.load_model()
+    def validation_step(self, batch, batch_idx):
+        rgbds, masks = batch
+        preds = self.model(rgbds)
+        loss = self.criterion(preds, masks)
+        iou = self.metric_iou(preds, masks)
+        self.log("val_loss", loss)
+        self.log("val_iou", iou)
+        return {"val_loss": loss}
 
-        self.batch_size = batch_size
-        self.num_epochs = num_epochs
-        self.learning_rate = learning_rate
+    def on_validation_epoch_end(self, outputs):
+        # outputs = list of dictionaries
+        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
+        tensorboard_logs = {"avg_val_loss": avg_loss}
+        # use key 'log'
+        return {"val_loss": avg_loss, "log": tensorboard_logs}
 
-        # Model, Loss, and Optimizer
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
+    def configure_optimizers(self):
+        return torch.optim.Adam(self.parameters(), lr=self.params.learning_rate)
 
-        # Training and Validation loop
-        past_epochs = 0
-        try:
-            for epoch in tqdm(range(num_epochs)):
-                self.model.train()
-                train_loss = 0
-                for rgbd, labels in self.train_loader:
-                    optimizer.zero_grad()
-                    preds = self.model(rgbd)
-                    loss = criterion(preds, labels)
-                    loss.backward()
-                    optimizer.step()
+    def model_summary(self):
+        return super().__repr__()
 
-                    train_loss += loss.item()
-                    # add mIoU
-                    print(f"Train Loss: {train_loss:.4f}", end="\r")
-
-                train_loss /= len(self.train_loader)
-
-                self.model.eval()
-                val_loss = 0
-                with torch.no_grad():
-                    for rgbd, labels in self.val_loader:
-                        preds = self.model(rgbd)
-                        loss = criterion(preds, labels)
-
-                        val_loss += loss.item()
-
-                val_loss /= len(self.val_loader)
-
-                print(
-                    f"Epoch: {epoch + 1}/{num_epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}"
-                )
-                past_epochs += 1
-        except KeyboardInterrupt:
-            print("Interrupted")
-            if past_epochs > 5:
-                self.save_model()
-            return
-
-    def load_model(self, from_file=False):
-        self.model = UNet(num_classes=self.num_classes).to(self.device)
-        if from_file:
-            self.model.load_state_dict(torch.load(self.model_path))
-            print(f"Loaded model from {self.model_path}")
-
-    def save_model(self):
-        torch.save(self.model.state_dict(), self.model_path)
-        print(f"Model saved to {self.model_path}")
+    def __repr__(self):
+        return f"""
+    <<<<<<<<<<<<<<<<<<<<PyTorch Lightning Model>>>>>>>>>>>>>>>>>>>>>>
+    -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
+    {self.config}
+    {self.params}
+    """
 
     def show_segmented(self):
-        rand_idx = random.randint(0, len(self.val_loader) - 1)
-        rgbd, label = list(self.val_loader)[rand_idx]
+        """
+        Display a random example of predicted segmentation and ground truth.
+        """
+        val_loader = self.val_dataloader()
+        rand_idx = random.randint(0, len(val_loader) - 1)
+        rgbd, label = list(val_loader)[rand_idx]
 
         self.model.eval()
         with torch.no_grad():
             pred = self.model(rgbd)[0, :, :, :]
             pred = pred.argmax(0).squeeze(0).cpu().numpy()
 
-        # rgb_image = rgbd.squeeze(0)[:3:, :, :]
-        # print(rgb_image)
-        # print(rgb_image.shape)
-        # rgb_image = rgb_image.numpy().astype(np.float32).transpose(1, 2, 0)
-
-        label = label[0, :, :].squeeze(0)
-
-        # print(rgb_image.shape)
+        label = label[0, :, :].squeeze(0).numpy()
 
         fig, (ax1, ax2) = plt.subplots(1, 2, sharex=True, sharey=True, figsize=(18, 6))
         fig.suptitle(f"Sample {rand_idx}")
-        # ax0.imshow(rgb_image)
-        # ax0.set_title("RGB image")
-        # ax0.set_axis_off()
         ax1.imshow(color.label2rgb(pred))
         ax1.set_title("Predicted segmentation")
         ax1.set_axis_off()
-        ax2.imshow(color.label2rgb(label.numpy()))
+        ax2.imshow(color.label2rgb(label))
         ax2.set_title("Ground truth")
         ax2.set_axis_off()
 
         plt.show()
 
+    def _set_pred_shape(self):  # TODO fix
+        self.model.eval()
+        with torch.no_grad():
+            x = self.model.forward(torch.randn(1, *self.params.rgbd_shape))
+            self.params.model_pred_shape = x.shape
+
+    # def iou_loss(self, preds, labels):
+    #     iou = self.train_iou(preds.argmax(dim=1), labels)
+    #     return 1 - iou
+
 
 if __name__ == "__main__":
-    trainer = ResUNetTrainer()
-    trainer.get_data_loaders(
-        data_path="/Volumes/Extreme SSD/nyu_depth_v2_labeled.mat",
-        num_samples=-1,
+    model = LitResResUNet()
+    # gpus=8
+    # fast_dev_run=True -> runs single batch through training and validation
+    # train_percent_check=0.1 -> train only on 10% of data
+    trainer = Trainer(
+        max_epochs=model.params.num_epochs, fast_dev_run=True, log_every_n_steps=25
     )
-    trainer.load_model(from_file=False)
-    trainer.train(num_epochs=20)
-    trainer.save_model()
-    trainer.show_segmented()
+    trainer.fit(model)
+
+    # advanced features
+    # distributed_backend
+    # (DDP) implements data parallelism at the module level which can run across multiple machines.
+    # 16 bit precision
+    # log_gpu_memory
+    # TPU support
+
+    # auto_lr_find: automatically finds a good learning rate before training
+    # deterministic: makes training reproducable
+    # gradient_clip_val: 0 default

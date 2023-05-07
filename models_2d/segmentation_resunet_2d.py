@@ -84,6 +84,9 @@ class ResUNet(nn.Module):
 
         self.resnet = ResNet4Channel()
         self.bottleneck = self._make_bottle_neck(2048, 2048)
+        self.pad = nn.ZeroPad2d(
+            (0, 0, 0, 1)
+        )  # resnet_layer3: [1, 1024, 15, 20]; bottleneck: [1, 2048, 16, 20]
         self.upconv3 = UpConv(2048, 1024)
         self.upconv2 = UpConv(1024, 512)
         self.upconv1 = UpConv(512, 256)
@@ -106,7 +109,7 @@ class ResUNet(nn.Module):
         x = self.upconv2.forward(x, x2)
         x = self.upconv1.forward(x, x1)
         x = self.last_conv(x)
-        x.squeeze_(1)
+        # x.squeeze(1)
         return x
 
     def summary(self, input_size):
@@ -114,7 +117,7 @@ class ResUNet(nn.Module):
 
 
 if __name__ == "__main__":
-    model = ResUNet(2)
-    x = model.forward(torch.randn(1, 4, 128, 128))
+    model = ResUNet(895)
+    x = model.forward(torch.randn(1, 4, 240, 320))
     print(x.shape)
     summary(model, (4, 256, 256))
