@@ -36,9 +36,6 @@ class ResNet4Channel(nn.Module):
         x4 = self.layer4(x3)
         return x1, x2, x3, x4
 
-    def print_summary(self, input_size):
-        summary(self, input_size)
-
 
 class ConvNormRelu(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, padding=1):
@@ -81,9 +78,9 @@ class UpConv(nn.Module):
         return x
 
 
-class UNet(nn.Module):
+class ResUNet(nn.Module):
     def __init__(self, num_classes):
-        super(UNet, self).__init__()
+        super(ResUNet, self).__init__()
 
         self.resnet = ResNet4Channel()
         self.bottleneck = self._make_bottle_neck(2048, 2048)
@@ -112,9 +109,12 @@ class UNet(nn.Module):
         x.squeeze_(1)
         return x
 
+    def summary(self, input_size):
+        summary(self, input_size)
+
 
 if __name__ == "__main__":
-    model = UNet(2)
+    model = ResUNet(2)
     x = model.forward(torch.randn(1, 4, 128, 128))
     print(x.shape)
     summary(model, (4, 256, 256))
